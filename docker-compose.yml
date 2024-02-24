@@ -1,7 +1,8 @@
 version: "3"
 services:
   screeps:
-    image: jomik/screeps-server:edge
+    platform: linux/x86_64
+    image: ghcr.io/jomik/screeps-server:edge
     depends_on:
       - mongo
       - redis
@@ -9,6 +10,8 @@ services:
       - 21025:21025/tcp
     volumes:
       - ./config.yml:/screeps/config.yml
+      - screeps-data:/data
+      - screeps-mods:/screeps/mods
     environment:
       MONGO_HOST: mongo
       REDIS_HOST: redis
@@ -28,5 +31,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  screeps-data:
+  screeps-mods:
   redis-data:
   mongo-data:

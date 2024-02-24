@@ -6,14 +6,15 @@
   "repository": "git@github.com-private:Jomik/screeps-server.git",
   "author": "Jonas Holst Damtoft <jonasdamtoft@gmail.com>",
   "license": "MIT",
+  "engines": {
+    "npm": "~6",
+    "node": "10 - 12"
+  },
   "dependencies": {
-    "screeps": "4.2.15",
+    "screeps": "4.2.19",
     "js-yaml": "4.1.0"
   },
   "scripts": {
-    "bootstrap": "mkdir -p server/mods && cd server && cp -a ../node_modules/@screeps/launcher/init_dist/{.screepsrc,db.json,assets} ./ && cd mods && npm init -y",
-    "clean": "rm -r server && yarn bootstrap",
-    "start": "CONFIG_FILE=../config.yml SERVER_DIR=./server/ ./screeps-start.js",
     "cli": "docker compose exec screeps cli"
   }
 }

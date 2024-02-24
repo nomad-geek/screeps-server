@@ -8,7 +8,8 @@ const RootDir = process.env["SERVER_DIR"];
 if (!RootDir) {
   throw new Error("Missing environment variable $SERVER_DIR");
 }
-const ConfigPath = process.env["CONFIG_FILE"] || "./config.yml";
+const ModsDir = path.join(RootDir, "mods");
+const ConfigPath = path.join(RootDir, "config.yml");
 
 process.chdir(RootDir);
 
@@ -16,8 +17,6 @@ const config = yaml.load(fs.readFileSync(ConfigPath, "utf8"));
 
 const loadPackage = (dir) =>
   JSON.parse(fs.readFileSync(path.resolve(dir, "package.json"), "utf8"));
-
-const ModsDir = "./mods";
 
 const isDependency = (pkg, [name, version]) =>
   pkg.includes(name) || version.includes(pkg);
@@ -64,6 +63,7 @@ const installPackages = () => {
       {
         cwd: ModsDir,
         stdio: "inherit",
+        encoding: "utf8",
       },
     );
   }
@@ -75,15 +75,10 @@ const installPackages = () => {
       {
         cwd: ModsDir,
         stdio: "inherit",
+        encoding: "utf8",
       },
     );
   }
-
-  const newPackage = loadPackage(ModsDir);
-  fs.writeFileSync(
-    path.resolve(ModsDir, "package.json"),
-    JSON.stringify(newPackage, null, 2),
-  );
 
   console.log("Done updating");
 };
@@ -123,18 +118,53 @@ const writeModsConfiguration = () => {
   console.log("Mods have been configured");
 };
 
+// Map from camelCase to snake_case
+const LauncherConfigMap = {
+  // NOTE: We assume this is outdated and we want one multi thread runner.
+  // runnerCount: "runners_cnt",
+  runnerThreads: "runner_threads",
+  processorCount: "processors_cnt",
+  storageTimeout: "storage_timeout",
+  logConsole: "log_console",
+  logRotateKeep: "log_rotate_keep",
+  restartInterval: "restart_interval",
+};
+
+const getPhysicalCores = () => {
+  const nproc = execSync("nproc --all", { encoding: "utf8" });
+
+  const cores = Number.parseInt(nproc.trim(), 10);
+  if (Number.isNaN(cores) && cores < 1) {
+    console.warn("Error getting number of physical cores, defaulting to 1");
+    return 1;
+  }
+  return cores;
+};
+
 const start = async () => {
   installPackages();
   writeModsConfiguration();
 
   const screeps = require("@screeps/launcher");
-  await screeps.start(
-    {
-      steam_api_key: process.env.STEAM_KEY || config.steamKey,
-      storage_disable: false,
-    },
-    process.stdout,
-  );
+  const cores = getPhysicalCores();
+
+  const options = {
+    steam_api_key: process.env.STEAM_KEY || config.steamKey,
+    storage_disable: false,
+    processors_cnt: cores,
+    runners_cnt: 1,
+    runner_threads: Math.max(cores - 1, 1),
+  };
+
+  const launcherOptions = config.launcherOptions || {};
+
+  for (const [configKey, optionsKey] of Object.entries(LauncherConfigMap)) {
+    if (configKey in launcherOptions) {
+      options[optionsKey] = launcherOptions[configKey];
+    }
+  }
+
+  await screeps.start(options, process.stdout);
 };
 
 start().catch((err) => {
